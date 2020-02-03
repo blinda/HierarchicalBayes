@@ -33,10 +33,28 @@ def compile_Stan():
         """
 
 
-        sm = pystan.StanModel(model_code=spec)
-    return
+    sm = pystan.StanModel(model_code=spec)
+    return sm
 
-def fit_Stan(name, pBins, biN):
+
+def fit_totSample_Stan(name, sm):
+    cwd = os.getcwd()
+    dat = np.load(cwd+'/totSample/'+name+'_pyStanSNR.npz')
+    data = dict(a=dat['a'], b=dat['b'], loc=dat['loc'], scale=dat['scale'], N=dat['N'])
+
+    fit = sm.sampling(data=data, iter=1000, chains=4)
+
+
+    la = fit.extract(permuted=True)  # return a dictionary of arrays
+    mu = la['mu']
+    sigma = la['sigma']
+
+    np.savez(cwd+'/MuSigma/'+name+'_MuSigma.npz', mu=mu, sigma=sigma)
+    return mu, sigma
+
+
+
+def fit_Stan(name, pBins, biN, sm):
 
     cwd = os.getcwd()
     #dat = np.load('pxnorm_pyStanSNR.npz')
@@ -51,9 +69,8 @@ def fit_Stan(name, pBins, biN):
     mu = la['mu']
     sigma = la['sigma']
 
-    np.savez(name+'_MuSigma'+pBins+np.str(biN)+'.npz', mu=mu, sigma=sigma)
+    np.savez(cwd+'/MuSigma/'+pBins+'/'+name+'_MuSigma'+pBins+np.str(biN)+'.npz', mu=mu, sigma=sigma)
     return mu, sigma
-
 
 
 if __name__=="__main__":
@@ -61,15 +78,16 @@ if __name__=="__main__":
     pBins = ['L', 'NH', 'NHL', 'NHH', 'z', 'zL', 'zH']
     biN = np.arange(1,7)
     
-    compile_Stan()
+    sm = compile_Stan()
+
+    # m, s = fit_totSample_Stan('rdblurnorm', sm)
 
     for pb in pBins:
         for bn in biN:
-            m, s = fit_Stan('pxnorm', pb, bn)
-            m, s = fit_Stan('rdblurnorm', pb, bn)
+            m, s = fit_Stan('pxnorm', pb, bn, sm)
+            m, s = fit_Stan('rdblurnorm', pb, bn, sm)
 
     #datRB = np.load('rdblurnorm_pyStanSNR.npz')
-
 
 
 
